@@ -1,0 +1,43 @@
+# Dependencies
+node_modules/
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# OS
+.DS_Store
+
+# Hardhat
+**/artifacts/
+**/cache/
+**/typechain/
+**/typechain-types/
+**/coverage/
+coverage.json
+**/ignition/deployments/chain-31337
+
+# Circuit build artifacts (regenerable via the ceremony — see packages/circuits/run.zsh)
+**/outputs/
+*.ptau
+*.zkey
+*.wasm
+*.r1cs
+*.sym
+
+# Generated proof samples + timing logs
+**/Proofs/*.json
+
+# Logs
+*.log
+npm-debug.log*
+
+# Next.js / web build output (Phase 6)
+**/.next/
+**/dist/
+**/build/
+
+# doc
+ROADMAP.
+docs

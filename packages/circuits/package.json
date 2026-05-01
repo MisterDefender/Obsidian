@@ -1,0 +1,16 @@
+{
+  "name": "@obsidian/circuits",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Obsidian zk-SNARK circuits, trusted-setup ceremony, and proof tooling.",
+  "license": "MIT",
+  "scripts": {
+    "build": "zsh run.zsh",
+    "prove": "node scripts/proofBuilder.js"
+  },
+  "dependencies": {
+    "circomlib": "^2.0.5",
+    "circomlibjs": "^0.1.7",
+    "snarkjs": "^0.7.5"
+  }
+}

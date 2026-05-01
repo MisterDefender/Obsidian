@@ -1,0 +1,10 @@
+{
+  "name": "@obsidian/web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Obsidian web frontend — Next.js + wagmi/viem deposit/withdraw UI (Phase 6).",
+  "license": "MIT",
+  "scripts": {
+    "dev": "echo \"@obsidian/web: not implemented yet (Phase 6)\""
+  }
+}

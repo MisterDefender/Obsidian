@@ -1,0 +1,19 @@
+{
+  "name": "obsidian",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Obsidian — a zero-knowledge shielded vault. ZK privacy research, testnet only.",
+  "license": "MIT",
+  "workspaces": [
+    "packages/contracts",
+    "packages/circuits",
+    "packages/sdk",
+    "packages/relayer",
+    "packages/web"
+  ],
+  "scripts": {
+    "compile": "npm run compile --workspace @obsidian/contracts",
+    "test": "npm run test --workspace @obsidian/contracts",
+    "deploy": "npm run deploy --workspace @obsidian/contracts"
+  }
+}

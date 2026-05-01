@@ -1,0 +1,23 @@
+{
+  "name": "@obsidian/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Obsidian smart contracts (Solidity + Hardhat).",
+  "license": "MIT",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "deploy": "hardhat deploy",
+    "node": "hardhat node"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^6.1.0",
+    "hardhat": "^2.27.1"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.4.0",
+    "dotenv": "^17.2.3",
+    "hardhat-deploy": "^1.0.4",
+    "solidity-coverage": "^0.8.16"
+  }
+}
