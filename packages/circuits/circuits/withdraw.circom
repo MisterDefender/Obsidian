@@ -1,71 +1,117 @@
 pragma circom 2.0.0;
 
-// Poseidon is like SHA256 but MUCH more efficient in zero-knowledge proofs
-include "../node_modules/circomlib/circuits/poseidon.circom";
-
+// Poseidon is ZK-friendly and matches the on-chain hasher generated from circomlib.
+// Resolved via the `-l <repo>/node_modules` include path passed by the build script.
+include "circomlib/circuits/poseidon.circom";
 
 /*
-This circuit proves:
-"I know a SECRET and NULLIFIER that when hashed together 
-produce COMMITMENT X, which exists in the smart contract without revealing secret and nullifier is"
+ * Obsidian withdraw circuit.
+ *
+ * Proves, in zero knowledge:
+ *   "I know a (nullifier, secret) whose commitment = Poseidon(nullifier, secret)
+ *    is a leaf in the Merkle tree with the given public `root` — without revealing
+ *    the commitment, the secret, or which leaf it is."
+ *
+ * Public inputs : root, nullifierHash, recipient, relayer, fee
+ * Private inputs: nullifier, secret, pathElements[levels], pathIndices[levels]
+ */
 
-Inputs:
-- secret (private): Your secret number (like a password)
-- nullifier (private): Prevents double-spending (a one time random code)
-- recipient (public): Who receives the withdrawal
-- commitmentHash (public): The hash that was stored during deposit
-*/
+// Hash a pair of nodes: Poseidon(left, right). Must match the on-chain hasher.
+template HashLeftRight() {
+    signal input left;
+    signal input right;
+    signal output hash;
 
-template Withdraw() {
-    // PRIVATE inputs (only you know these)
-    signal input secret;
-    signal input nullifier;
-    
-    // PUBLIC inputs (everyone can see)
-    signal input recipient; // Ethereum address of the recipient
-    signal input commitmentHash; // identify the deposit being withdrawn in smart contract
-    
-    // Create the commitment (computation process)
-    // Hash the secret and nullifier together
-    component commitment = Poseidon(2); // a hash function that takes 2 inputs (BLENDER)
-    commitment.inputs[0] <== secret;
-    commitment.inputs[1] <== nullifier;
-
-     // secret + nullifier = ingredients
-
-    
-    // Now commitment.out contains: hash(secret, nullifier)
-    // Check that our hash matches the public commitment
-    commitment.out === commitmentHash;
-    
-    // Create a nullifier hash to prevent double-spending
-    component nullifierHasher = Poseidon(1);
-    nullifierHasher.inputs[0] <== nullifier;
-    signal output nullifierHash; // This will be public output from the circuit signal
-    nullifierHash <== nullifierHasher.out;
-
-    /*
-    WHY DO WE NEED NULLIFIER HASH?
-    
-    Problem: Someone could withdraw the same deposit multiple times!
-    
-    Solution: The nullifierHash is made public and stored in the contract
-    When you try to withdraw:
-    1. Contract checks: "Has this nullifierHash been used before?"
-    2. If yes: REJECT (already spent)
-    3. If no: ACCEPT and mark nullifierHash as used
-    
-    The nullifier itself stays private, but its hash becomes public
-    This way each deposit can only be withdrawn ONCE
-    */
+    component hasher = Poseidon(2);
+    hasher.inputs[0] <== left;
+    hasher.inputs[1] <== right;
+    hash <== hasher.out;
 }
 
+// Given two inputs and a selector bit `s`, output them in order:
+//   s = 0 -> [in[0], in[1]]   (our node is the left child)
+//   s = 1 -> [in[1], in[0]]   (our node is the right child)
+template DualMux() {
+    signal input in[2];
+    signal input s;
+    signal output out[2];
 
-/*
-This line says:
-- Create an instance of Withdraw template
-- Mark "recipient" and "commitmentHash" as public inputs
-- Everything else (secret, nullifier) stays private
-- The circuit will output "nullifierHash" publicly
-*/
-component main {public [recipient, commitmentHash]} = Withdraw();
+    s * (1 - s) === 0;                        // constrain s to a bit
+    out[0] <== (in[1] - in[0]) * s + in[0];
+    out[1] <== (in[0] - in[1]) * s + in[1];
+}
+
+// Verify a Merkle proof: folding `leaf` up `levels` using path elements/indices
+// must reproduce `root`.
+template MerkleTreeChecker(levels) {
+    signal input leaf;
+    signal input root;
+    signal input pathElements[levels];
+    signal input pathIndices[levels];
+
+    component selectors[levels];
+    component hashers[levels];
+
+    for (var i = 0; i < levels; i++) {
+        selectors[i] = DualMux();
+        selectors[i].in[0] <== i == 0 ? leaf : hashers[i - 1].hash;
+        selectors[i].in[1] <== pathElements[i];
+        selectors[i].s <== pathIndices[i];
+
+        hashers[i] = HashLeftRight();
+        hashers[i].left <== selectors[i].out[0];
+        hashers[i].right <== selectors[i].out[1];
+    }
+
+    root === hashers[levels - 1].hash;
+}
+
+template Withdraw(levels) {
+    // public
+    signal input root;
+    signal input nullifierHash;
+    signal input recipient;
+    signal input relayer;
+    signal input fee;
+
+    // private
+    signal input nullifier;
+    signal input secret;
+    signal input pathElements[levels];
+    signal input pathIndices[levels];
+
+    // commitment = Poseidon(nullifier, secret)
+    component commitmentHasher = Poseidon(2);
+    commitmentHasher.inputs[0] <== nullifier;
+    commitmentHasher.inputs[1] <== secret;
+
+    // nullifierHash = Poseidon(nullifier), constrained to the public input
+    component nullifierHasher = Poseidon(1);
+    nullifierHasher.inputs[0] <== nullifier;
+    nullifierHasher.out === nullifierHash;
+
+    // Merkle inclusion of the commitment under the public root
+    component tree = MerkleTreeChecker(levels);
+    tree.leaf <== commitmentHasher.out;
+    tree.root <== root;
+    for (var i = 0; i < levels; i++) {
+        tree.pathElements[i] <== pathElements[i];
+        tree.pathIndices[i] <== pathIndices[i];
+    }
+
+    /*
+     * Bind recipient, relayer, and fee into the proof.
+     *
+     * Groth16 does not constrain public inputs that don't appear in any constraint,
+     * which would let a relayer rewrite them after the fact. Squaring each forces
+     * them into the constraint system so the proof is invalid if any is changed.
+     */
+    signal recipientSquare;
+    signal relayerSquare;
+    signal feeSquare;
+    recipientSquare <== recipient * recipient;
+    relayerSquare <== relayer * relayer;
+    feeSquare <== fee * fee;
+}
+
+component main {public [root, nullifierHash, recipient, relayer, fee]} = Withdraw(20);

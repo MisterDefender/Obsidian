@@ -11,23 +11,25 @@
 ```
 ALICE (Deposit):
 1. Generate a random secret + nullifier
-2. commitment = Poseidon(secret, nullifier)
+2. commitment = Poseidon(nullifier, secret)
 3. Send tokens + commitment to the vault
-4. Vault stores the commitment
+4. Vault inserts the commitment as the next Merkle-tree leaf
 5. Alice saves her secret note
 
            [ time passes — the privacy gap ]
 
 BOB (Withdraw):
 1. Bob holds the note (received off-chain)
-2. Generate a proof: "I know a secret+nullifier behind a commitment in the vault"
-3. Submit proof + recipient to the vault
-4. Vault verifies the proof
-5. Vault pays the recipient
-6. Nullifier is marked used (prevents double-spend)
+2. Rebuild the tree from events and prove, in zero knowledge:
+   "my commitment is SOME leaf under this Merkle root" (never which one)
+3. Submit proof + root + nullifierHash + recipient to the vault
+4. Vault checks the root is recent, verifies the proof
+5. Vault pays the recipient (optionally a relayer fee)
+6. nullifierHash is marked used (prevents double-spend)
 ```
 
-The proof reveals nothing about the secret; only the commitment and nullifier hash are public.
+Only the **root** and the **nullifier hash** are public — the proof never reveals the commitment,
+the secret, or which leaf is being spent. That's what gives a large anonymity set.
 
 ## Monorepo layout
 
@@ -57,4 +59,9 @@ cp .env.example .env        # then fill in your keys
 
 Active development — upgrading from a learning prototype to a production-grade, multi-chain testnet
 deployment (**Sepolia + Arbitrum Sepolia + Base Sepolia**) with a live frontend. See
-[`ROADMAP.md`](./ROADMAP.md); Phase 1 (on-chain Merkle tree) is the core privacy fix in progress.
+[`ROADMAP.md`](./ROADMAP.md).
+
+- ✅ **Phase 0** — monorepo foundation, rename, git.
+- ✅ **Phase 1** — on-chain Poseidon Merkle tree + ZK Merkle-inclusion withdraw (the core privacy
+  fix). `ObsidianVault` + `MerkleTreeWithHistory` + rewritten circuit; full test suite green.
+- ⏭️ **Next** — security hardening (Phase 4), SDK (Phase 5), relayer (Phase 2), frontend (Phase 6).

@@ -5,8 +5,7 @@
   "description": "Obsidian zk-SNARK circuits, trusted-setup ceremony, and proof tooling.",
   "license": "MIT",
   "scripts": {
-    "build": "zsh run.zsh",
-    "prove": "node scripts/proofBuilder.js"
+    "build": "zsh run.zsh"
   },
   "dependencies": {
     "circomlib": "^2.0.5",
