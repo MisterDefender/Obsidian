@@ -29,6 +29,17 @@ interface IVerifier {
 contract ObsidianVault is MerkleTreeWithHistory, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
+    error InvalidVerifier();
+    error InvalidToken();
+    error InvalidDenomination();
+    error InvalidRecipient();
+    error CommitmentAlreadyUsed(uint256 commitment);
+    error CommitmentOutOfField(uint256 commitment);
+    error NoteAlreadySpent(uint256 nullifierHash);
+    error UnknownRoot(uint256 root);
+    error FeeExceedsDenomination(uint256 fee, uint256 denomination);
+    error InvalidProof();
+
     IVerifier public immutable verifier;
     IERC20 public immutable token;
     uint256 public immutable denomination;
@@ -55,9 +66,9 @@ contract ObsidianVault is MerkleTreeWithHistory, ReentrancyGuard {
         uint256 _denomination,
         uint32 _levels
     ) MerkleTreeWithHistory(_levels, _hasher) {
-        require(address(_verifier) != address(0), "invalid verifier");
-        require(address(_token) != address(0), "invalid token");
-        require(_denomination > 0, "invalid denomination");
+        if (address(_verifier) == address(0)) revert InvalidVerifier();
+        if (address(_token) == address(0)) revert InvalidToken();
+        if (_denomination == 0) revert InvalidDenomination();
         verifier = _verifier;
         token = _token;
         denomination = _denomination;
@@ -68,8 +79,8 @@ contract ObsidianVault is MerkleTreeWithHistory, ReentrancyGuard {
      * @dev Caller must approve the vault for `denomination` first.
      */
     function deposit(uint256 _commitment) external nonReentrant {
-        require(!commitments[_commitment], "commitment already used");
-        require(_commitment < FIELD_SIZE, "commitment out of field");
+        if (commitments[_commitment]) revert CommitmentAlreadyUsed(_commitment);
+        if (_commitment >= FIELD_SIZE) revert CommitmentOutOfField(_commitment);
 
         uint32 index = _insert(_commitment);
         commitments[_commitment] = true;
@@ -94,26 +105,24 @@ contract ObsidianVault is MerkleTreeWithHistory, ReentrancyGuard {
         address _relayer,
         uint256 _fee
     ) external nonReentrant {
-        require(!nullifierHashes[_nullifierHash], "note already spent");
-        require(isKnownRoot(_root), "unknown root");
-        require(_fee <= denomination, "fee exceeds denomination");
-        require(_recipient != address(0), "invalid recipient");
+        if (nullifierHashes[_nullifierHash]) revert NoteAlreadySpent(_nullifierHash);
+        if (!isKnownRoot(_root)) revert UnknownRoot(_root);
+        if (_fee > denomination) revert FeeExceedsDenomination(_fee, denomination);
+        if (_recipient == address(0)) revert InvalidRecipient();
 
-        require(
-            verifier.verifyProof(
-                _pA,
-                _pB,
-                _pC,
-                [
-                    _root,
-                    _nullifierHash,
-                    uint256(uint160(_recipient)),
-                    uint256(uint160(_relayer)),
-                    _fee
-                ]
-            ),
-            "invalid proof"
+        bool valid = verifier.verifyProof(
+            _pA,
+            _pB,
+            _pC,
+            [
+                _root,
+                _nullifierHash,
+                uint256(uint160(_recipient)),
+                uint256(uint160(_relayer)),
+                _fee
+            ]
         );
+        if (!valid) revert InvalidProof();
 
         // effects before interactions
         nullifierHashes[_nullifierHash] = true;

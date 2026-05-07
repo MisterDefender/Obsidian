@@ -39,5 +39,5 @@ npm-debug.log*
 **/build/
 
 # doc
-ROADMAP.
+ROADMAP.md
 docs

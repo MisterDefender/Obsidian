@@ -71,9 +71,9 @@ describe('Obsidian shielded vault', function () {
             const note = await generateNote();
             await deposit(note);
             await usdc.connect(alice).approve(await vault.getAddress(), DENOMINATION);
-            await expect(vault.connect(alice).deposit(note.commitment)).to.be.revertedWith(
-                'commitment already used'
-            );
+            await expect(
+                vault.connect(alice).deposit(note.commitment)
+            ).to.be.revertedWithCustomError(vault, 'CommitmentAlreadyUsed');
         });
     });
 
@@ -178,8 +178,9 @@ describe('Obsidian shielded vault', function () {
                 0n,
             ];
             await vault.connect(bob).withdraw(...args);
-            await expect(vault.connect(bob).withdraw(...args)).to.be.revertedWith(
-                'note already spent'
+            await expect(vault.connect(bob).withdraw(...args)).to.be.revertedWithCustomError(
+                vault,
+                'NoteAlreadySpent'
             );
         });
 
@@ -211,7 +212,7 @@ describe('Obsidian shielded vault', function () {
                         ethers.ZeroAddress,
                         0n
                     )
-            ).to.be.revertedWith('unknown root');
+            ).to.be.revertedWithCustomError(vault, 'UnknownRoot');
         });
 
         it('rejects a tampered recipient (proof no longer valid)', async function () {
@@ -243,7 +244,7 @@ describe('Obsidian shielded vault', function () {
                         ethers.ZeroAddress,
                         0n
                     )
-            ).to.be.revertedWith('invalid proof');
+            ).to.be.revertedWithCustomError(vault, 'InvalidProof');
         });
 
         it('rejects a fee greater than the denomination', async function () {
@@ -273,7 +274,7 @@ describe('Obsidian shielded vault', function () {
                         relayer.address,
                         DENOMINATION + 1n
                     )
-            ).to.be.revertedWith('fee exceeds denomination');
+            ).to.be.revertedWithCustomError(vault, 'FeeExceedsDenomination');
         });
     });
 });

@@ -20,6 +20,11 @@ interface IHasher {
  * and computing the zero-subtree values in the constructor.
  */
 contract MerkleTreeWithHistory {
+    error LevelsOutOfRange(uint32 levels);
+    error LeftOutOfField(uint256 value);
+    error RightOutOfField(uint256 value);
+    error TreeFull();
+
     // BN254 scalar field — every node value must be a valid field element.
     uint256 public constant FIELD_SIZE =
         21888242871839275222246405745257275088548364400416034343698204186575808495617;
@@ -41,8 +46,7 @@ contract MerkleTreeWithHistory {
     uint32 public nextIndex;
 
     constructor(uint32 _levels, IHasher _hasher) {
-        require(_levels > 0, "levels must be > 0");
-        require(_levels < 32, "levels must be < 32");
+        if (_levels == 0 || _levels >= 32) revert LevelsOutOfRange(_levels);
         levels = _levels;
         hasher = _hasher;
 
@@ -64,15 +68,15 @@ contract MerkleTreeWithHistory {
 
     /// @notice Poseidon hash of an ordered pair, via the on-chain hasher.
     function hashLeftRight(uint256 _left, uint256 _right) public view returns (uint256) {
-        require(_left < FIELD_SIZE, "left out of field");
-        require(_right < FIELD_SIZE, "right out of field");
+        if (_left >= FIELD_SIZE) revert LeftOutOfField(_left);
+        if (_right >= FIELD_SIZE) revert RightOutOfField(_right);
         return hasher.poseidon([_left, _right]);
     }
 
     /// @notice Insert a leaf and advance the tree. Returns the leaf's index.
     function _insert(uint256 _leaf) internal returns (uint32 index) {
         uint32 _nextIndex = nextIndex;
-        require(_nextIndex != uint32(2) ** levels, "tree is full");
+        if (_nextIndex == uint32(2) ** levels) revert TreeFull();
 
         uint32 currentIndex = _nextIndex;
         uint256 currentLevelHash = _leaf;
