@@ -3,7 +3,7 @@ const { ethers, deployments } = require('hardhat');
 const { anyValue } = require('@nomicfoundation/hardhat-chai-matchers/withArgs');
 const {
     getPoseidon,
-    MerkleTree,
+    createMerkleTree,
     generateNote,
     generateWithdrawProof,
 } = require('./helpers/zk.cjs');
@@ -47,7 +47,7 @@ describe('Obsidian shielded vault', function () {
         });
 
         it('empty-tree root matches the JS tree', async function () {
-            const tree = new MerkleTree(LEVELS, poseidon);
+            const tree = await createMerkleTree(LEVELS);
             expect(await vault.getLastRoot()).to.equal(tree.root());
         });
     });
@@ -55,7 +55,7 @@ describe('Obsidian shielded vault', function () {
     describe('deposit', function () {
         it('inserts a leaf, advances the tree, and pulls tokens', async function () {
             const note = await generateNote();
-            const tree = new MerkleTree(LEVELS, poseidon);
+            const tree = await createMerkleTree(LEVELS);
             tree.insert(note.commitment);
 
             await expect(deposit(note))
@@ -81,7 +81,7 @@ describe('Obsidian shielded vault', function () {
         it('pays the recipient and the relayer fee with a valid proof', async function () {
             const fee = 2n * 10n ** 6n; // 2 USDC
             const note = await generateNote();
-            const tree = new MerkleTree(LEVELS, poseidon);
+            const tree = await createMerkleTree(LEVELS);
 
             await deposit(note);
             tree.insert(note.commitment);
@@ -123,7 +123,7 @@ describe('Obsidian shielded vault', function () {
 
         it('supports a self-withdraw (no relayer, zero fee)', async function () {
             const note = await generateNote();
-            const tree = new MerkleTree(LEVELS, poseidon);
+            const tree = await createMerkleTree(LEVELS);
             await deposit(note);
             tree.insert(note.commitment);
             const merkleProof = tree.proof(0);
@@ -154,7 +154,7 @@ describe('Obsidian shielded vault', function () {
 
         it('prevents double-spend (reused nullifier)', async function () {
             const note = await generateNote();
-            const tree = new MerkleTree(LEVELS, poseidon);
+            const tree = await createMerkleTree(LEVELS);
             await deposit(note);
             tree.insert(note.commitment);
             const merkleProof = tree.proof(0);
@@ -186,7 +186,7 @@ describe('Obsidian shielded vault', function () {
 
         it('rejects an unknown root', async function () {
             const note = await generateNote();
-            const tree = new MerkleTree(LEVELS, poseidon);
+            const tree = await createMerkleTree(LEVELS);
             await deposit(note);
             tree.insert(note.commitment);
             const merkleProof = tree.proof(0);
@@ -217,7 +217,7 @@ describe('Obsidian shielded vault', function () {
 
         it('rejects a tampered recipient (proof no longer valid)', async function () {
             const note = await generateNote();
-            const tree = new MerkleTree(LEVELS, poseidon);
+            const tree = await createMerkleTree(LEVELS);
             await deposit(note);
             tree.insert(note.commitment);
             const merkleProof = tree.proof(0);
@@ -249,7 +249,7 @@ describe('Obsidian shielded vault', function () {
 
         it('rejects a fee greater than the denomination', async function () {
             const note = await generateNote();
-            const tree = new MerkleTree(LEVELS, poseidon);
+            const tree = await createMerkleTree(LEVELS);
             await deposit(note);
             tree.insert(note.commitment);
             const merkleProof = tree.proof(0);

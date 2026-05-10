@@ -3,7 +3,7 @@ const { ethers, deployments } = require('hardhat');
 const {
     FIELD_SIZE,
     getPoseidon,
-    MerkleTree,
+    createMerkleTree,
     generateNote,
     generateWithdrawProof,
 } = require('./helpers/zk.cjs');
@@ -40,7 +40,7 @@ describe('Obsidian — security & edge cases', function () {
 
     it('withdraws an interior (non-last) leaf', async function () {
         const notes = [await generateNote(), await generateNote(), await generateNote()];
-        const tree = new MerkleTree(LEVELS, poseidon);
+        const tree = await createMerkleTree(LEVELS);
         for (const n of notes) {
             await depositTo(vault, usdc, n);
             tree.insert(n.commitment);
@@ -75,7 +75,7 @@ describe('Obsidian — security & edge cases', function () {
 
     it('accepts a previous root that is still within history', async function () {
         const noteA = await generateNote();
-        const treeA = new MerkleTree(LEVELS, poseidon);
+        const treeA = await createMerkleTree(LEVELS);
         await depositTo(vault, usdc, noteA);
         treeA.insert(noteA.commitment);
         const rootA = treeA.proof(0).root;
@@ -113,7 +113,7 @@ describe('Obsidian — security & edge cases', function () {
 
     it('rejects a root evicted from history', async function () {
         const noteA = await generateNote();
-        const treeA = new MerkleTree(LEVELS, poseidon);
+        const treeA = await createMerkleTree(LEVELS);
         await depositTo(vault, usdc, noteA);
         treeA.insert(noteA.commitment);
         const rootA = treeA.proof(0).root;
@@ -152,7 +152,7 @@ describe('Obsidian — security & edge cases', function () {
 
     it('allows fee == denomination (recipient gets zero, relayer gets all)', async function () {
         const note = await generateNote();
-        const tree = new MerkleTree(LEVELS, poseidon);
+        const tree = await createMerkleTree(LEVELS);
         await depositTo(vault, usdc, note);
         tree.insert(note.commitment);
         const mp = tree.proof(0);
@@ -211,7 +211,7 @@ describe('Obsidian — security & edge cases', function () {
         await evilVault.waitForDeployment();
 
         const note = await generateNote();
-        const tree = new MerkleTree(LEVELS, poseidon);
+        const tree = await createMerkleTree(LEVELS);
         await evil.connect(deployer).approve(await evilVault.getAddress(), DENOMINATION);
         await evilVault.connect(deployer).deposit(note.commitment);
         tree.insert(note.commitment);

@@ -2,11 +2,30 @@
   "name": "@obsidian/sdk",
   "version": "0.1.0",
   "private": true,
-  "description": "Obsidian client SDK — note generation, proof building, and Merkle-tree sync (Phase 5).",
+  "description": "Obsidian client SDK — notes, Poseidon Merkle tree, proof generation, and pool sync.",
   "license": "MIT",
   "type": "module",
-  "main": "src/index.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
-    "build": "echo \"@obsidian/sdk: not implemented yet (Phase 5)\""
+    "build": "tsc -p tsconfig.json",
+    "test": "npm run build && node --test"
+  },
+  "dependencies": {
+    "circomlibjs": "^0.1.7",
+    "ethers": "^6.13.0",
+    "snarkjs": "^0.7.5"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.0"
   }
 }

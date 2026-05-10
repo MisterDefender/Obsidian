@@ -64,4 +64,8 @@ deployment (**Sepolia + Arbitrum Sepolia + Base Sepolia**) with a live frontend.
 - ✅ **Phase 0** — monorepo foundation, rename, git.
 - ✅ **Phase 1** — on-chain Poseidon Merkle tree + ZK Merkle-inclusion withdraw (the core privacy
   fix). `ObsidianVault` + `MerkleTreeWithHistory` + rewritten circuit; full test suite green.
-- ⏭️ **Next** — security hardening (Phase 4), SDK (Phase 5), relayer (Phase 2), frontend (Phase 6).
+- ✅ **Phase 4** — security hardening: custom errors, reentrancy/edge tests, Slither (clean), CI,
+  threat model ([`SECURITY.md`](./SECURITY.md)).
+- ✅ **Phase 5** — TypeScript SDK ([`@obsidian/sdk`](./packages/sdk)): notes, Poseidon Merkle tree,
+  proof generation, and a pool client. The contracts tests run against it.
+- ⏭️ **Next** — frontend (Phase 6) + relayer (Phase 2), then testnet deploy (Phase 7).
