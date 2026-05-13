@@ -2,9 +2,34 @@
   "name": "@obsidian/web",
   "version": "0.1.0",
   "private": true,
-  "description": "Obsidian web frontend — Next.js + wagmi/viem deposit/withdraw UI (Phase 6).",
+  "description": "Obsidian web frontend — Next.js + react-three-fiber.",
   "license": "MIT",
   "scripts": {
-    "dev": "echo \"@obsidian/web: not implemented yet (Phase 6)\""
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@react-three/drei": "^10.0.0",
+    "@react-three/fiber": "^9.1.0",
+    "@react-three/postprocessing": "^3.0.0",
+    "clsx": "^2.1.1",
+    "motion": "^12.0.0",
+    "next": "^15.1.0",
+    "postprocessing": "^6.37.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "tailwind-merge": "^2.5.0",
+    "three": "^0.171.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@types/three": "^0.171.0",
+    "@tailwindcss/postcss": "^4.0.0",
+    "tailwindcss": "^4.0.0",
+    "typescript": "^6.0.0"
   }
 }

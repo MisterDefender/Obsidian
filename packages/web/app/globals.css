@@ -1,0 +1,65 @@
+@import "tailwindcss";
+
+/* ── Obsidian design tokens (Molten Ember) ─────────────────────────────── */
+@theme {
+  --color-void: #0a0a0b;
+  --color-void-2: #101013;
+  --color-obsidian: #16161a;
+  --color-ash: #2a2a31;
+  --color-smoke: #8a8a93;
+  --color-bone: #e7e5e4;
+
+  --color-ember: #ff5a1f;
+  --color-ember-glow: #ffb020;
+  --color-iris: #7c5cff;
+
+  --font-display: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-mono), ui-monospace, monospace;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  background-color: var(--color-void);
+  color: var(--color-bone);
+}
+
+body {
+  font-family: var(--font-display);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+}
+
+/* Ambient depth behind the 3D scene */
+.bg-void-radial {
+  background:
+    radial-gradient(120% 90% at 50% 12%, rgba(255, 90, 31, 0.10), transparent 55%),
+    radial-gradient(80% 60% at 50% 110%, rgba(124, 92, 255, 0.08), transparent 60%),
+    var(--color-void);
+}
+
+/* Frosted glass surface for panels */
+.glass {
+  background: color-mix(in oklab, var(--color-obsidian) 55%, transparent);
+  backdrop-filter: blur(16px) saturate(120%);
+  border: 1px solid color-mix(in oklab, var(--color-ember) 18%, transparent);
+}
+
+@keyframes ember-pulse {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
