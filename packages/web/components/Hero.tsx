@@ -26,6 +26,25 @@ export function Hero() {
                 <CrystalScene />
             </div>
 
+            {/* readability layers: centered scrim behind the copy, edge vignette, bottom fade */}
+            <div
+                aria-hidden
+                className="pointer-events-none absolute inset-0 z-[1]"
+                style={{
+                    background:
+                        'radial-gradient(44% 36% at 50% 50%, rgba(10,10,11,0.78), rgba(10,10,11,0) 72%)',
+                }}
+            />
+            <div
+                aria-hidden
+                className="pointer-events-none absolute inset-0 z-[1]"
+                style={{
+                    background:
+                        'radial-gradient(125% 105% at 50% 45%, transparent 52%, rgba(0,0,0,0.6))',
+                }}
+            />
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-44 bg-gradient-to-t from-void to-transparent" />
+
             {/* top bar */}
             <header className="relative z-10 flex items-center justify-between px-6 py-6 md:px-10">
                 <span className="font-display text-sm font-bold tracking-[0.35em] text-bone">
