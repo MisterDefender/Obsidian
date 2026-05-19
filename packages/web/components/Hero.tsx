@@ -1,6 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
 import { motion } from 'motion/react';
 
 // three.js can't render on the server — load the scene client-only.
@@ -100,9 +101,12 @@ export function Hero() {
                     variants={fadeUp}
                     className="mt-10 flex items-center gap-4"
                 >
-                    <button className="pointer-events-auto rounded-full bg-gradient-to-r from-ember to-ember-glow px-7 py-3 font-display text-sm font-semibold text-void shadow-[0_0_40px_-8px_var(--color-ember)] transition-transform hover:scale-[1.03] active:scale-95">
+                    <Link
+                        href="/vault"
+                        className="pointer-events-auto rounded-full bg-gradient-to-r from-ember to-ember-glow px-7 py-3 font-display text-sm font-semibold text-void shadow-[0_0_40px_-8px_var(--color-ember)] transition-transform hover:scale-[1.03] active:scale-95"
+                    >
                         Enter the vault
-                    </button>
+                    </Link>
                     <a
                         href="#how"
                         className="pointer-events-auto rounded-full border border-ash px-7 py-3 font-display text-sm font-medium text-bone/90 transition-colors hover:border-ember/50 hover:text-bone"
