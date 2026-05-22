@@ -27,16 +27,40 @@ export const DEPLOYMENTS: Partial<Record<number, ObsidianDeployment>> = {
     // [baseSepolia.id]:    { vault: '0x…', usdc: '0x…', denomination: DENOMINATION, levels: 20, deploymentBlock: 0n },
 };
 
+// Next inlines only STATIC process.env.NEXT_PUBLIC_* references, so we map them
+// explicitly per chain id rather than building the key dynamically.
+const ENV_ADDRESSES: Record<number, { vault?: string; usdc?: string; block?: string }> = {
+    [sepolia.id]: {
+        vault: process.env.NEXT_PUBLIC_VAULT_11155111,
+        usdc: process.env.NEXT_PUBLIC_USDC_11155111,
+        block: process.env.NEXT_PUBLIC_BLOCK_11155111,
+    },
+    [arbitrumSepolia.id]: {
+        vault: process.env.NEXT_PUBLIC_VAULT_421614,
+        usdc: process.env.NEXT_PUBLIC_USDC_421614,
+        block: process.env.NEXT_PUBLIC_BLOCK_421614,
+    },
+    [baseSepolia.id]: {
+        vault: process.env.NEXT_PUBLIC_VAULT_84532,
+        usdc: process.env.NEXT_PUBLIC_USDC_84532,
+        block: process.env.NEXT_PUBLIC_BLOCK_84532,
+    },
+    [hardhat.id]: {
+        vault: process.env.NEXT_PUBLIC_VAULT_31337,
+        usdc: process.env.NEXT_PUBLIC_USDC_31337,
+        block: process.env.NEXT_PUBLIC_BLOCK_31337,
+    },
+};
+
 function fromEnv(chainId: number): ObsidianDeployment | undefined {
-    const vault = process.env[`NEXT_PUBLIC_VAULT_${chainId}`];
-    const usdc = process.env[`NEXT_PUBLIC_USDC_${chainId}`];
-    if (!vault || !usdc) return undefined;
+    const entry = ENV_ADDRESSES[chainId];
+    if (!entry?.vault || !entry?.usdc) return undefined;
     return {
-        vault: vault as `0x${string}`,
-        usdc: usdc as `0x${string}`,
+        vault: entry.vault as `0x${string}`,
+        usdc: entry.usdc as `0x${string}`,
         denomination: DENOMINATION,
         levels: 20,
-        deploymentBlock: BigInt(process.env[`NEXT_PUBLIC_BLOCK_${chainId}`] ?? '0'),
+        deploymentBlock: BigInt(entry.block ?? '0'),
     };
 }
 

@@ -3,6 +3,7 @@
 import { useAccount, useChainId } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { AppHeader } from '@/components/AppHeader';
+import { DepositPanel } from '@/components/vault/DepositPanel';
 import { getDeployment, chainName, SUPPORTED_CHAINS } from '@/lib/contracts';
 
 function truncate(addr?: string) {
@@ -25,11 +26,15 @@ export default function VaultPage() {
                     <div className="grid gap-6">
                         <NetworkCard chainId={chainId} hasDeployment={!!deployment} vault={deployment?.vault} />
                         <div className="grid gap-6 md:grid-cols-2">
-                            <ActionPanel
-                                title="Deposit"
-                                blurb="Lock a fixed amount under a fresh commitment. Your note is the only key to withdraw."
-                                disabled={!deployment}
-                            />
+                            {deployment ? (
+                                <DepositPanel deployment={deployment} />
+                            ) : (
+                                <ActionPanel
+                                    title="Deposit"
+                                    blurb="Lock a fixed amount under a fresh commitment. Your note is the only key to withdraw."
+                                    disabled
+                                />
+                            )}
                             <ActionPanel
                                 title="Withdraw"
                                 blurb="Prove you own a note in the pool and send it anywhere — no on-chain link to the deposit."

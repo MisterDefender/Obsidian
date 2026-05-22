@@ -12,6 +12,7 @@ node_modules/
 # Hardhat
 **/artifacts/
 **/cache/
+**/deployments/localhost/
 **/typechain/
 **/typechain-types/
 **/coverage/
