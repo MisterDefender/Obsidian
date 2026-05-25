@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { erc20Abi, formatUnits } from 'viem';
 import { useAccount, useChainId, usePublicClient, useReadContract, useWriteContract } from 'wagmi';
 import { motion } from 'motion/react';
-import { createNote, encodeNote } from '@obsidian/sdk';
+import { loadSdk } from '@/lib/sdk';
 import { vaultAbi } from '@/lib/abis';
 import type { ObsidianDeployment } from '@/lib/contracts';
 
@@ -48,8 +48,9 @@ export function DepositPanel({ deployment }: { deployment: ObsidianDeployment })
         try {
             // 1. fresh note — generated and kept entirely client-side
             setStatus('Generating your note…');
-            const note = await createNote();
-            const encoded = encodeNote(note, chainId);
+            const sdk = await loadSdk();
+            const note = await sdk.createNote();
+            const encoded = sdk.encodeNote(note, chainId);
 
             // 2. approve if needed
             if (allowance === undefined || allowance < denom) {

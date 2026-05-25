@@ -8,7 +8,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "copy-artifacts": "node scripts/copy-artifacts.mjs",
+    "predev": "node scripts/copy-artifacts.mjs",
+    "prebuild": "node scripts/copy-artifacts.mjs"
   },
   "dependencies": {
     "@obsidian/sdk": "*",

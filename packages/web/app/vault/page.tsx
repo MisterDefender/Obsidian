@@ -4,6 +4,7 @@ import { useAccount, useChainId } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { AppHeader } from '@/components/AppHeader';
 import { DepositPanel } from '@/components/vault/DepositPanel';
+import { WithdrawPanel } from '@/components/vault/WithdrawPanel';
 import { getDeployment, chainName, SUPPORTED_CHAINS } from '@/lib/contracts';
 
 function truncate(addr?: string) {
@@ -35,11 +36,15 @@ export default function VaultPage() {
                                     disabled
                                 />
                             )}
-                            <ActionPanel
-                                title="Withdraw"
-                                blurb="Prove you own a note in the pool and send it anywhere — no on-chain link to the deposit."
-                                disabled={!deployment}
-                            />
+                            {deployment ? (
+                                <WithdrawPanel deployment={deployment} />
+                            ) : (
+                                <ActionPanel
+                                    title="Withdraw"
+                                    blurb="Prove you own a note in the pool and send it anywhere — no on-chain link to the deposit."
+                                    disabled
+                                />
+                            )}
                         </div>
                     </div>
                 )}
