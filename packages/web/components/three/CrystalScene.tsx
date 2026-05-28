@@ -7,19 +7,25 @@ import { Crystal } from './Crystal';
 
 /**
  * The obsidian crystal centerpiece. Transparent canvas so the CSS ambient
- * gradient shows through; bloom gives the ember edges their molten glow.
- * Loaded client-only (see the dynamic import in Hero) — three.js can't SSR.
+ * gradient shows through; bloom gives the ember edges (and shards) their glow.
+ * Loaded client-only (dynamic import) — three.js can't SSR.
  */
-export default function CrystalScene() {
+export default function CrystalScene({
+    shards = 0,
+    cameraZ = 6,
+}: {
+    shards?: number;
+    cameraZ?: number;
+}) {
     const reduceMotion = useReducedMotion();
 
     return (
         <Canvas
-            camera={{ position: [0, 0, 6], fov: 42 }}
+            camera={{ position: [0, 0, cameraZ], fov: 42 }}
             dpr={[1, 2]}
             gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
         >
-            <Crystal animate={!reduceMotion} />
+            <Crystal animate={!reduceMotion} shards={shards} />
             <EffectComposer>
                 <Bloom
                     intensity={1.15}

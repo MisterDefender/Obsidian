@@ -6,6 +6,7 @@ import { useAccount, useChainId, usePublicClient, useReadContract, useWriteContr
 import { motion } from 'motion/react';
 import { loadSdk } from '@/lib/sdk';
 import { vaultAbi } from '@/lib/abis';
+import { useNotesStore } from '@/lib/notesStore';
 import type { ObsidianDeployment } from '@/lib/contracts';
 
 type Step = 'idle' | 'working' | 'save' | 'error';
@@ -15,6 +16,7 @@ export function DepositPanel({ deployment }: { deployment: ObsidianDeployment })
     const chainId = useChainId();
     const publicClient = usePublicClient();
     const { writeContractAsync } = useWriteContract();
+    const addNote = useNotesStore((s) => s.addNote);
 
     const [step, setStep] = useState<Step>('idle');
     const [status, setStatus] = useState('');
@@ -75,6 +77,13 @@ export function DepositPanel({ deployment }: { deployment: ObsidianDeployment })
             });
             setStatus('Confirming deposit…');
             await publicClient.waitForTransactionReceipt({ hash: depositHash });
+
+            addNote({
+                noteString: encoded,
+                commitment: note.commitment.toString(),
+                nullifierHash: note.nullifierHash.toString(),
+                status: 'unspent',
+            });
 
             setNoteString(encoded);
             setSavedConfirmed(false);

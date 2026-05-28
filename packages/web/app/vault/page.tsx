@@ -5,6 +5,8 @@ import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { AppHeader } from '@/components/AppHeader';
 import { DepositPanel } from '@/components/vault/DepositPanel';
 import { WithdrawPanel } from '@/components/vault/WithdrawPanel';
+import { PoolPanel } from '@/components/vault/PoolPanel';
+import { NoteManager } from '@/components/vault/NoteManager';
 import { getDeployment, chainName, SUPPORTED_CHAINS } from '@/lib/contracts';
 
 function truncate(addr?: string) {
@@ -26,6 +28,7 @@ export default function VaultPage() {
                 ) : (
                     <div className="grid gap-6">
                         <NetworkCard chainId={chainId} hasDeployment={!!deployment} vault={deployment?.vault} />
+                        {deployment && <PoolPanel deployment={deployment} />}
                         <div className="grid gap-6 md:grid-cols-2">
                             {deployment ? (
                                 <DepositPanel deployment={deployment} />
@@ -37,7 +40,9 @@ export default function VaultPage() {
                                 />
                             )}
                             {deployment ? (
-                                <WithdrawPanel deployment={deployment} />
+                                <div id="withdraw">
+                                    <WithdrawPanel deployment={deployment} />
+                                </div>
                             ) : (
                                 <ActionPanel
                                     title="Withdraw"
@@ -46,6 +51,7 @@ export default function VaultPage() {
                                 />
                             )}
                         </div>
+                        {deployment && <NoteManager deployment={deployment} />}
                     </div>
                 )}
             </div>

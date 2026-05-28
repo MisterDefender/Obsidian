@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { formatUnits, isAddress, getAddress, parseAbiItem, zeroAddress } from 'viem';
 import { useAccount, usePublicClient, useWriteContract } from 'wagmi';
 import { motion } from 'motion/react';
 import { loadSdk, ARTIFACTS } from '@/lib/sdk';
 import { vaultAbi } from '@/lib/abis';
+import { useNotesStore } from '@/lib/notesStore';
 import type { ObsidianDeployment } from '@/lib/contracts';
 
 type Step = 'idle' | 'working' | 'done' | 'error';
@@ -19,11 +20,24 @@ export function WithdrawPanel({ deployment }: { deployment: ObsidianDeployment }
     const publicClient = usePublicClient();
     const { writeContractAsync } = useWriteContract();
 
+    const prefill = useNotesStore((s) => s.prefill);
+    const setPrefill = useNotesStore((s) => s.setPrefill);
+
     const [noteString, setNoteString] = useState('');
     const [recipient, setRecipient] = useState('');
     const [step, setStep] = useState<Step>('idle');
     const [status, setStatus] = useState('');
     const [error, setError] = useState('');
+
+    // a note picked from the note manager prefills the form
+    useEffect(() => {
+        if (prefill) {
+            setNoteString(prefill);
+            setStep('idle');
+            setError('');
+            setPrefill(null);
+        }
+    }, [prefill, setPrefill]);
 
     const denomLabel = `${formatUnits(deployment.denomination, 6)} USDC`;
     const recipientValid = isAddress(recipient);
