@@ -1,13 +1,18 @@
 'use client';
 
 import { useAccount, useChainId } from 'wagmi';
-import { ConnectButton } from '@rainbow-me/rainbowkit';
+import dynamic from 'next/dynamic';
+import { CustomConnectButton } from '@/components/CustomConnectButton';
 import { AppHeader } from '@/components/AppHeader';
 import { DepositPanel } from '@/components/vault/DepositPanel';
 import { WithdrawPanel } from '@/components/vault/WithdrawPanel';
 import { PoolPanel } from '@/components/vault/PoolPanel';
 import { NoteManager } from '@/components/vault/NoteManager';
 import { getDeployment, chainName, SUPPORTED_CHAINS } from '@/lib/contracts';
+
+const VaultBackground = dynamic(() => import('@/components/three/VaultBackground'), {
+    ssr: false,
+});
 
 function truncate(addr?: string) {
     return addr ? `${addr.slice(0, 6)}…${addr.slice(-4)}` : '';
@@ -20,9 +25,10 @@ export default function VaultPage() {
 
     return (
         <main className="relative min-h-dvh">
+            <VaultBackground />
             <AppHeader />
 
-            <div className="mx-auto w-full max-w-5xl px-6 py-10 md:px-10">
+            <div className="relative z-10 mx-auto w-full max-w-5xl px-6 py-10 md:px-10">
                 {!isConnected ? (
                     <ConnectPrompt />
                 ) : (
@@ -69,7 +75,7 @@ function ConnectPrompt() {
                 withdraw privately.
             </p>
             <div className="mt-8">
-                <ConnectButton />
+                <CustomConnectButton large />
             </div>
         </div>
     );

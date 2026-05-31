@@ -6,6 +6,7 @@ import { useNotesStore, type NoteStatus, type StoredNote } from '@/lib/notesStor
 import { loadSdk } from '@/lib/sdk';
 import { vaultAbi } from '@/lib/abis';
 import type { ObsidianDeployment } from '@/lib/contracts';
+import { copyToClipboard } from '@/lib/clipboard';
 
 const STATUS_LABEL: Record<NoteStatus, string> = {
     unknown: 'checking…',
@@ -156,7 +157,7 @@ export function NoteManager({ deployment }: { deployment: ObsidianDeployment }) 
                                 </button>
                             )}
                             <button
-                                onClick={() => navigator.clipboard.writeText(note.noteString)}
+                                onClick={() => copyToClipboard(note.noteString)}
                                 className="rounded-lg border border-ash px-2.5 py-1 font-display text-[11px] text-smoke hover:text-bone"
                             >
                                 Copy

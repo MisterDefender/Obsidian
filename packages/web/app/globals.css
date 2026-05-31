@@ -63,3 +63,32 @@ body {
     transition-duration: 0.001ms !important;
   }
 }
+
+/* Mask background to render only in left/right margins on screens > 1024px */
+@media (min-width: 1024px) {
+  .constellation-mask {
+    -webkit-mask-image: linear-gradient(
+      to right,
+      black 0%,
+      black calc(50vw - 512px),
+      transparent calc(50vw - 512px),
+      transparent calc(50vw + 512px),
+      black calc(50vw + 512px),
+      black 100%
+    );
+    mask-image: linear-gradient(
+      to right,
+      black 0%,
+      black calc(50vw - 512px),
+      transparent calc(50vw - 512px),
+      transparent calc(50vw + 512px),
+      black calc(50vw + 512px),
+      black 100%
+    );
+  }
+}
+@media (max-width: 1023px) {
+  .constellation-mask {
+    display: none;
+  }
+}

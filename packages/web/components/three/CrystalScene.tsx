@@ -4,6 +4,7 @@ import { Canvas } from '@react-three/fiber';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import { useReducedMotion } from 'motion/react';
 import { Crystal } from './Crystal';
+import { BackgroundParticles } from './BackgroundParticles';
 
 /**
  * The obsidian crystal centerpiece. Transparent canvas so the CSS ambient
@@ -26,6 +27,7 @@ export default function CrystalScene({
             gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
         >
             <Crystal animate={!reduceMotion} shards={shards} />
+            {!reduceMotion && <BackgroundParticles />}
             <EffectComposer>
                 <Bloom
                     intensity={1.15}

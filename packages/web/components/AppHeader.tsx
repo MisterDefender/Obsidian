@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { CustomConnectButton } from './CustomConnectButton';
 import { useAccount, useConnect, useDisconnect } from 'wagmi';
 import { isDevMock } from '@/lib/wagmi';
 
@@ -46,7 +46,7 @@ export function AppHeader() {
             {isDevMock ? (
                 <DevConnect />
             ) : (
-                <ConnectButton accountStatus="address" chainStatus="icon" showBalance={false} />
+                <CustomConnectButton />
             )}
         </header>
     );

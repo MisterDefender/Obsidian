@@ -15,8 +15,8 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
     return (
-        <html lang="en" className={`${displayFont.variable} ${monoFont.variable}`}>
-            <body className="bg-void-radial min-h-dvh antialiased">
+        <html lang="en" className={`${displayFont.variable} ${monoFont.variable}`} suppressHydrationWarning>
+            <body className="bg-void-radial min-h-dvh antialiased" suppressHydrationWarning>
                 <Providers>{children}</Providers>
             </body>
         </html>

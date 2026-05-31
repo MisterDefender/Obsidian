@@ -1,6 +1,5 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DeployFunction } from 'hardhat-deploy/types';
-import { ethers } from 'hardhat';
 import 'hardhat-deploy';
 // circomlibjs ships no type declarations
 // @ts-ignore
@@ -14,7 +13,7 @@ import { poseidonContract } from 'circomlibjs';
  */
 const deployPoseidon: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const { deployments, getNamedAccounts } = hre;
-    const { log, save, getOrNull } = deployments;
+    const { deploy, log, getOrNull } = deployments;
     const { deployer } = await getNamedAccounts();
 
     const existing = await getOrNull('Poseidon');
@@ -26,14 +25,16 @@ const deployPoseidon: DeployFunction = async function (hre: HardhatRuntimeEnviro
     const abi = poseidonContract.generateABI(2);
     const bytecode = poseidonContract.createCode(2);
 
-    const signer = await ethers.getSigner(deployer);
-    const factory = new ethers.ContractFactory(abi, bytecode, signer);
-    const poseidon = await factory.deploy();
-    await poseidon.waitForDeployment();
-    const address = await poseidon.getAddress();
+    const poseidonDeployment = await deploy('Poseidon', {
+        from: deployer,
+        contract: {
+            abi,
+            bytecode,
+        },
+        log: true,
+    });
 
-    await save('Poseidon', { address, abi });
-    log(`Poseidon(2) hasher deployed at ${address}`);
+    log(`Poseidon(2) hasher deployed at ${poseidonDeployment.address}`);
 };
 
 export default deployPoseidon;

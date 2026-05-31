@@ -15,8 +15,15 @@ const OWNER_PVT_KEY = process.env.OWNER_PVT_KEY || "0x" + "11".repeat(32); // De
 const ALICE = process.env.ALICE || "0x" + "11".repeat(32); // Default private key (if env not set)
 const BOB = process.env.BOB || "0x" + "11".repeat(32); // Default private key (if env not set)
 const ALCHEMY_NODE_KEY = process.env.ALCHEMY_NODE_KEY || "your_default_alchemy_key";
-const MONSOON_API_KEY = process.env.MONSOON_API_KEY || "empty"; // Add Monsoon API key (if required)
-const MONSOON_ALPHA_NODE_URL = process.env.MONSOON_ALPHA_NODE_URL || "your_default_node_URL"
+
+// Testnet RPC URLs and Explorer Keys
+const SEPOLIA_RPC_URL = process.env.SEPOLIA_RPC_URL || `https://eth-sepolia.g.alchemy.com/v2/${ALCHEMY_NODE_KEY}`;
+const ARBITRUM_SEPOLIA_RPC_URL = process.env.ARBITRUM_SEPOLIA_RPC_URL || `https://arb-sepolia.g.alchemy.com/v2/${ALCHEMY_NODE_KEY}`;
+const BASE_SEPOLIA_RPC_URL = process.env.BASE_SEPOLIA_RPC_URL || `https://base-sepolia.g.alchemy.com/v2/${ALCHEMY_NODE_KEY}`;
+
+const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY || "";
+const ARBISCAN_API_KEY = process.env.ARBISCAN_API_KEY || "";
+const BASESCAN_API_KEY = process.env.BASESCAN_API_KEY || "";
 // Warn if mock values are being used
 if (!process.env.OWNER_PVT_KEY) {
   console.warn("⚠️ WARNING: Using a mock private key. Provide a valid `OWNER_PVT_KEY` in your .env file for actual mainnet/testnet interactions.");
@@ -30,14 +37,11 @@ if (!process.env.BOB) {
 if (!process.env.ALCHEMY_NODE_KEY) {
   console.warn("⚠️ WARNING: Using a mock Alchemy node key. Provide a valid `ALCHEMY_NODE_KEY` in your .env file for actual mainnet/testnet interactions.");
 }
-if (!process.env.MONSOON_ALPHA_NODE_URL) {
-  console.warn("⚠️ WARNING: Using a mock Monsoon node URL. Provide a valid `MONSOON_ALPHA_NODE_URL` in your .env file for actual mainnet/testnet interactions.");
-}
 
 
 if (process.env.ENABLE_FORK_TESTS === 'true') {
-  console.log("FORK MODE ENABLED - Testing against monsoon-testnet");
-  console.log(`Fork URL: ${MONSOON_ALPHA_NODE_URL}`);
+  console.log("FORK MODE ENABLED - Testing against Sepolia");
+  console.log(`Fork URL: ${SEPOLIA_RPC_URL}`);
 } else {
   console.log("LOCAL MODE - Testing on local hardhat network");
 }
@@ -62,8 +66,7 @@ const config: HardhatUserConfig = {
     hardhat: {
       allowUnlimitedContractSize: false,
       forking: process.env.ENABLE_FORK_TESTS === 'true' ? {
-        url: MONSOON_ALPHA_NODE_URL,
-        blockNumber: 1932, // use latest block number
+        url: SEPOLIA_RPC_URL,
         enabled: true,
       } : undefined,
     },
@@ -83,32 +86,47 @@ const config: HardhatUserConfig = {
       saveDeployments: true,
       gasMultiplier: 2,
     },
-    "monsoonAlpha": {
-      accounts: [OWNER_PVT_KEY, ALICE, BOB],
-      url: `https:/${MONSOON_ALPHA_NODE_URL}`,
+
+    sepolia: {
+      accounts: [OWNER_PVT_KEY],
+      url: SEPOLIA_RPC_URL,
       live: true,
       gas: "auto",
       saveDeployments: true,
-      gasMultiplier: 2,
-      chainId: 100611,
+      gasMultiplier: 1.5,
+      chainId: 11155111,
+    },
+    arbSepolia: {
+      accounts: [OWNER_PVT_KEY],
+      url: ARBITRUM_SEPOLIA_RPC_URL,
+      live: true,
+      gas: "auto",
+      saveDeployments: true,
+      gasMultiplier: 1.5,
+      chainId: 421614,
+    },
+    baseSepolia: {
+      accounts: [OWNER_PVT_KEY],
+      url: BASE_SEPOLIA_RPC_URL,
+      live: true,
+      gas: "auto",
+      saveDeployments: true,
+      gasMultiplier: 1.5,
+      chainId: 84532,
     },
   },
   etherscan: {
     enabled: true, // Disable automatic verification for all networks
     apiKey: {
-      "monsoonAlpha": MONSOON_API_KEY,
       avaxFuji: "avascan",
-      avalanche: "avascan"
+      avalanche: "avascan",
+      sepolia: ETHERSCAN_API_KEY,
+      arbitrumSepolia: ARBISCAN_API_KEY,
+      arbSepolia: ARBISCAN_API_KEY,
+      arvSepolia: ARBISCAN_API_KEY,
+      baseSepolia: BASESCAN_API_KEY,
     },
     customChains: [
-      {
-        network: "monsoonAlpha",
-        chainId: 100611,
-        urls: {
-          apiURL: "https://scout.alpha.monsoon.rainfall.one/api",
-          browserURL: "https://scout.alpha.monsoon.rainfall.one"
-        }
-      },
       {
         network: "avaxFuji",
         chainId: 43113,
@@ -123,6 +141,46 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: "https://api.avascan.info/v2/network/mainnet/evm/43114/etherscan",
           browserURL: "https://testnet.avascan.info/blockchain/C-Chain"
+        }
+      },
+      {
+        network: "sepolia",
+        chainId: 11155111,
+        urls: {
+          apiURL: "https://api-sepolia.etherscan.io/api",
+          browserURL: "https://sepolia.etherscan.io"
+        }
+      },
+      {
+        network: "arbitrumSepolia",
+        chainId: 421614,
+        urls: {
+          apiURL: "https://api-sepolia.arbiscan.io/api",
+          browserURL: "https://sepolia.arbiscan.io"
+        }
+      },
+      {
+        network: "arbSepolia",
+        chainId: 421614,
+        urls: {
+          apiURL: "https://api-sepolia.arbiscan.io/api",
+          browserURL: "https://sepolia.arbiscan.io"
+        }
+      },
+      {
+        network: "arvSepolia",
+        chainId: 421614,
+        urls: {
+          apiURL: "https://api-sepolia.arbiscan.io/api",
+          browserURL: "https://sepolia.arbiscan.io"
+        }
+      },
+      {
+        network: "baseSepolia",
+        chainId: 84532,
+        urls: {
+          apiURL: "https://api-sepolia.basescan.org/api",
+          browserURL: "https://sepolia.basescan.org"
         }
       }
     ],

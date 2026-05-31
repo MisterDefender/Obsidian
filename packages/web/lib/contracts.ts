@@ -22,9 +22,27 @@ const DENOMINATION = 100n * 10n ** 6n; // 100 USDC (6 decimals)
  * in the UI. Override via NEXT_PUBLIC_VAULT_<chainId> / NEXT_PUBLIC_USDC_<chainId>.
  */
 export const DEPLOYMENTS: Partial<Record<number, ObsidianDeployment>> = {
-    // [sepolia.id]:        { vault: '0x…', usdc: '0x…', denomination: DENOMINATION, levels: 20, deploymentBlock: 0n },
-    // [arbitrumSepolia.id]:{ vault: '0x…', usdc: '0x…', denomination: DENOMINATION, levels: 20, deploymentBlock: 0n },
-    // [baseSepolia.id]:    { vault: '0x…', usdc: '0x…', denomination: DENOMINATION, levels: 20, deploymentBlock: 0n },
+    [sepolia.id]: {
+        vault: '0xA8033Dfd4e028E4D0b1130e4feFcC2C03702160f',
+        usdc: '0xe5fe0864e2150D77CC4848fAeE79B05d1974a9B1',
+        denomination: DENOMINATION,
+        levels: 20,
+        deploymentBlock: 10979502n,
+    },
+    [arbitrumSepolia.id]: {
+        vault: '0x1d86Bda759Af4470FAAe1e5a8E4678f30a7BfdB8',
+        usdc: '0xcd657a30D302065Ea539E55103Ce94f11b32c175',
+        denomination: DENOMINATION,
+        levels: 20,
+        deploymentBlock: 273353241n,
+    },
+    [baseSepolia.id]: {
+        vault: '0x5b2E3aC7CFAAc2ffa89598Cb6a37d40184fc0BE0',
+        usdc: '0x789258402CCDa7fC97B7d24A9615041049C52Cf5',
+        denomination: DENOMINATION,
+        levels: 20,
+        deploymentBlock: 42348924n,
+    },
 };
 
 // Next inlines only STATIC process.env.NEXT_PUBLIC_* references, so we map them

@@ -8,6 +8,7 @@ import { loadSdk } from '@/lib/sdk';
 import { vaultAbi } from '@/lib/abis';
 import { useNotesStore } from '@/lib/notesStore';
 import type { ObsidianDeployment } from '@/lib/contracts';
+import { copyToClipboard } from '@/lib/clipboard';
 
 type Step = 'idle' | 'working' | 'save' | 'error';
 
@@ -122,7 +123,7 @@ export function DepositPanel({ deployment }: { deployment: ObsidianDeployment })
                     noteString={noteString}
                     saved={savedConfirmed}
                     onToggleSaved={setSavedConfirmed}
-                    onCopy={() => navigator.clipboard.writeText(noteString)}
+                    onCopy={() => copyToClipboard(noteString)}
                     onDownload={downloadNote}
                     onDone={() => {
                         setNoteString('');
