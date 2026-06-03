@@ -48,12 +48,64 @@ obsidian/
 
 ## Getting started
 
+All commands run from the repo root (npm workspaces). See the root
+[`package.json`](./package.json) `scripts` for the full list.
+
+### 1. Install + build everything
+
 ```bash
-npm install                 # installs all workspaces
-npm run compile             # compile the contracts
-npm run test                # run the contract test suite
-cp .env.example .env        # then fill in your keys
+npm run setup        # install deps, build the circuit (dev ceremony), build the SDK, compile contracts
+# or build literally everything (incl. the web app):
+npm run build
 ```
+
+`npm run setup` runs, in order:
+`npm install` → `build:circuits` (compile + dev Powers-of-Tau, emits `Verifier.sol` + proving key)
+→ `build:sdk` (tsc) → `compile` (Hardhat).
+
+### 2. Test
+
+```bash
+npm test             # Hardhat contract suite (needs the circuit built first)
+npm run test:sdk     # SDK unit tests (note round-trip, tree, real proof vs vkey)
+npm run slither      # static analysis (requires slither-analyzer)
+```
+
+### 3. Run the full stack locally (two terminals)
+
+```bash
+# terminal 1 — local chain; hardhat-deploy auto-deploys Poseidon → Verifier → ObsidianVault
+npm run chain
+
+# terminal 2 — the web app (http://localhost:3000)
+npm run dev
+```
+
+Then point the web app at the local deployment by creating `packages/web/.env.local`
+(addresses are hardhat's deterministic defaults):
+
+```bash
+NEXT_PUBLIC_DEV_MOCK=true          # connect/sign via a local hardhat account (no MetaMask)
+NEXT_PUBLIC_VAULT_31337=0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9
+NEXT_PUBLIC_USDC_31337=0x5FbDB2315678afecb367f032d93F642f64180aa3
+NEXT_PUBLIC_BLOCK_31337=0
+```
+
+### Root scripts reference
+
+| Script | What it does |
+|---|---|
+| `npm run setup` | install + build circuit + build SDK + compile contracts |
+| `npm run build` | the above **plus** build the web app |
+| `npm run build:circuits` / `:sdk` / `:web` | build a single package |
+| `npm run compile` / `npm test` | Hardhat compile / test |
+| `npm run test:sdk` | SDK tests |
+| `npm run slither` | Slither static analysis |
+| `npm run chain` | local Hardhat node (auto-deploys) |
+| `npm run deploy` / `npm run deploy:local` | deploy (default network / `localhost`) |
+| `npm run dev` / `npm start` | web app in dev / production mode |
+
+For testnet deploys, copy `.env.example` to `.env` and fill in RPC + explorer keys.
 
 ## Status
 

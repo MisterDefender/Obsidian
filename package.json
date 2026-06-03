@@ -12,8 +12,19 @@
     "packages/web"
   ],
   "scripts": {
+    "setup": "npm install && npm run build:circuits && npm run build:sdk && npm run compile",
+    "build": "npm run build:circuits && npm run build:sdk && npm run compile && npm run build:web",
+    "build:circuits": "npm run build --workspace @obsidian/circuits",
+    "build:sdk": "npm run build --workspace @obsidian/sdk",
+    "build:web": "npm run build --workspace @obsidian/web",
     "compile": "npm run compile --workspace @obsidian/contracts",
     "test": "npm run test --workspace @obsidian/contracts",
-    "deploy": "npm run deploy --workspace @obsidian/contracts"
+    "test:sdk": "npm run test --workspace @obsidian/sdk",
+    "slither": "cd packages/contracts && slither .",
+    "chain": "npm run node --workspace @obsidian/contracts",
+    "deploy": "npm run deploy --workspace @obsidian/contracts",
+    "deploy:local": "npm run deploy --workspace @obsidian/contracts -- --network localhost",
+    "dev": "npm run dev --workspace @obsidian/web",
+    "start": "npm run start --workspace @obsidian/web"
   }
 }
