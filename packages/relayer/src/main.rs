@@ -7,6 +7,7 @@
 mod chain;
 mod config;
 mod contract;
+mod fee;
 mod state;
 
 use std::sync::Arc;
@@ -21,7 +22,6 @@ use tracing_subscriber::EnvFilter;
 
 use crate::chain::build_chains;
 use crate::config::Config;
-use crate::contract::ObsidianVault;
 use crate::state::{AppState, SharedState};
 
 // ── Response types ───────────────────────────────────────────────────────────
@@ -35,8 +35,11 @@ struct Health {
 struct ChainInfo {
     chain_id: u64,
     vault: String,
-    /// `None` if the chain's RPC is unreachable right now.
+    /// All `None` if the chain's RPC is unreachable right now.
     denomination: Option<String>,
+    /// The fee (6-decimal USDC units) a client should bake into its proof.
+    fee: Option<String>,
+    gas_price: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -62,23 +65,29 @@ async fn info(State(state): State<SharedState>) -> Json<InfoResponse> {
     let mut chains = Vec::new();
 
     for ctx in state.chains.values() {
-        // Build a contract handle bound to this chain's provider + vault address,
-        // then actually call denomination() over RPC. The read may fail (RPC down),
-        // so we degrade gracefully to `None` rather than erroring the whole endpoint.
-        let vault = ObsidianVault::new(ctx.vault_address, &ctx.provider);
-        let denomination = match vault.denomination().call().await {
-            Ok(value) => Some(value.to_string()),
+        // A fee quote reads gas price + denomination and computes the fee. If the
+        // chain's RPC is unreachable we degrade to `None` instead of failing the
+        // whole endpoint.
+        let info = match fee::quote(ctx, &state.config).await {
+            Ok(q) => ChainInfo {
+                chain_id: ctx.chain_id,
+                vault: ctx.vault_address.to_string(),
+                denomination: Some(q.denomination.to_string()),
+                fee: Some(q.fee.to_string()),
+                gas_price: Some(q.gas_price.to_string()),
+            },
             Err(err) => {
-                tracing::warn!(chain_id = ctx.chain_id, "denomination read failed: {err}");
-                None
+                tracing::warn!(chain_id = ctx.chain_id, "fee quote failed: {err}");
+                ChainInfo {
+                    chain_id: ctx.chain_id,
+                    vault: ctx.vault_address.to_string(),
+                    denomination: None,
+                    fee: None,
+                    gas_price: None,
+                }
             }
         };
-
-        chains.push(ChainInfo {
-            chain_id: ctx.chain_id,
-            vault: ctx.vault_address.to_string(),
-            denomination,
-        });
+        chains.push(info);
     }
 
     Json(InfoResponse {
