@@ -8,7 +8,6 @@
     "packages/contracts",
     "packages/circuits",
     "packages/sdk",
-    "packages/relayer",
     "packages/web"
   ],
   "scripts": {

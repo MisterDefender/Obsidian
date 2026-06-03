@@ -1,6 +1,9 @@
 # Dependencies
 node_modules/
 
+# Rust build output (Cargo.lock IS committed for the binary)
+**/target/
+
 # Secrets
 .env
 .env.*
