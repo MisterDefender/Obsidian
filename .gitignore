@@ -44,3 +44,7 @@ npm-debug.log*
 # doc
 ROADMAP.md
 docs
+
+# Allow committing the compiled ZK proving artifacts for production builds
+!packages/circuits/build/withdraw_js/withdraw.wasm
+!packages/circuits/build/withdraw_final.zkey
