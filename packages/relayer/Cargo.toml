@@ -20,3 +20,6 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 # Load a .env file into environment variables during local development
 dotenvy = "0.15"
+
+# Ethereum: RPC providers, local signer, and type-safe contract bindings (sol! macro)
+alloy = { version = "1", features = ["full"] }

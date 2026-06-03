@@ -1,21 +1,21 @@
-//! Shared application state — the "dependency injection" container.
-//!
-//! We build this ONCE at startup and give every request handler a reference to
-//! the same instance, instead of reaching for global variables. Today it only
-//! holds the config; in the next step it'll also hold the live per-chain
-//! connections (providers + wallet).
+//! Shared application state — the "dependency injection" container, built once at
+//! startup and shared (via `Arc`) by every request handler.
 
+use std::collections::HashMap;
 use std::sync::Arc;
 
+use alloy::primitives::Address;
+
+use crate::chain::ChainContext;
 use crate::config::Config;
 
 pub struct AppState {
     pub config: Config,
-    // (next step) pub chains: HashMap<u64, ChainContext>,
+    /// The relayer's own address (derived from the private key).
+    pub relayer_address: Address,
+    /// Live per-chain connections, keyed by chain id.
+    pub chains: HashMap<u64, ChainContext>,
 }
 
-/// `Arc` = Atomically Reference-Counted pointer. It lets many concurrent tasks
-/// share ONE `AppState` safely: each clone bumps a counter rather than copying
-/// the data, and the value is freed when the last reference is dropped. This is
-/// the standard way to share read-only state across async handlers.
+/// `Arc` lets many concurrent async tasks share ONE `AppState` safely.
 pub type SharedState = Arc<AppState>;

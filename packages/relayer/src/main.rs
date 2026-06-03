@@ -1,9 +1,12 @@
 //! Obsidian relayer — entry point.
 //!
-//! Step 2: load config from the environment, build the shared `AppState`, and
-//! inject it into the handlers. `/info` now reports the chains we're configured for.
+//! Step 3: build live chain connections at boot and report real on-chain data.
+//! `/info` now derives the relayer address from the key and reads `denomination()`
+//! from each configured vault.
 
+mod chain;
 mod config;
+mod contract;
 mod state;
 
 use std::sync::Arc;
@@ -16,7 +19,9 @@ use axum::{
 use serde::Serialize;
 use tracing_subscriber::EnvFilter;
 
+use crate::chain::build_chains;
 use crate::config::Config;
+use crate::contract::ObsidianVault;
 use crate::state::{AppState, SharedState};
 
 // ── Response types ───────────────────────────────────────────────────────────
@@ -30,11 +35,14 @@ struct Health {
 struct ChainInfo {
     chain_id: u64,
     vault: String,
+    /// `None` if the chain's RPC is unreachable right now.
+    denomination: Option<String>,
 }
 
 #[derive(Serialize)]
 struct InfoResponse {
     service: &'static str,
+    relayer: String,
     chains: Vec<ChainInfo>,
 }
 
@@ -50,22 +58,32 @@ async fn health() -> Json<Health> {
     Json(Health { status: "ok" })
 }
 
-/// `State(state)` is an Axum "extractor": it pulls our shared `AppState` out of
-/// the request context, so the handler receives the dependencies it needs rather
-/// than reaching for a global. We only read from it, so concurrent calls are safe.
 async fn info(State(state): State<SharedState>) -> Json<InfoResponse> {
-    let chains = state
-        .config
-        .chains
-        .iter()
-        .map(|c| ChainInfo {
-            chain_id: c.chain_id,
-            vault: c.vault_address.clone(),
-        })
-        .collect();
+    let mut chains = Vec::new();
+
+    for ctx in state.chains.values() {
+        // Build a contract handle bound to this chain's provider + vault address,
+        // then actually call denomination() over RPC. The read may fail (RPC down),
+        // so we degrade gracefully to `None` rather than erroring the whole endpoint.
+        let vault = ObsidianVault::new(ctx.vault_address, &ctx.provider);
+        let denomination = match vault.denomination().call().await {
+            Ok(value) => Some(value.to_string()),
+            Err(err) => {
+                tracing::warn!(chain_id = ctx.chain_id, "denomination read failed: {err}");
+                None
+            }
+        };
+
+        chains.push(ChainInfo {
+            chain_id: ctx.chain_id,
+            vault: ctx.vault_address.to_string(),
+            denomination,
+        });
+    }
 
     Json(InfoResponse {
         service: "obsidian-relayer",
+        relayer: state.relayer_address.to_string(),
         chains,
     })
 }
@@ -81,7 +99,6 @@ async fn relay() -> Json<Stub> {
 
 #[tokio::main]
 async fn main() {
-    // Load a local .env file if present (no-op in production where env is set directly).
     dotenvy::dotenv().ok();
 
     tracing_subscriber::fmt()
@@ -90,8 +107,6 @@ async fn main() {
         )
         .init();
 
-    // Fail fast: if config is invalid, log a clear error and exit at boot — never
-    // limp along and surprise a user mid-request.
     let config = match Config::from_env() {
         Ok(c) => c,
         Err(e) => {
@@ -100,16 +115,28 @@ async fn main() {
         }
     };
 
+    // Build the live chain connections (and derive the relayer address). Bad key,
+    // address, or URL fails here at boot.
+    let (relayer_address, chains) = match build_chains(&config).await {
+        Ok(v) => v,
+        Err(e) => {
+            tracing::error!("chain setup error: {e}");
+            std::process::exit(1);
+        }
+    };
+
     let bind = config.bind();
     tracing::info!(
-        chains = config.chains.len(),
-        "loaded config for {} chain(s)",
-        config.chains.len()
+        relayer = %relayer_address,
+        chains = chains.len(),
+        "relayer ready"
     );
 
-    // Build the shared state ONCE, wrap it in an Arc, and hand it to the router.
-    // Every handler now shares this single instance.
-    let state: SharedState = Arc::new(AppState { config });
+    let state: SharedState = Arc::new(AppState {
+        config,
+        relayer_address,
+        chains,
+    });
 
     let app = Router::new()
         .route("/health", get(health))
