@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "Obsidian zk-SNARK circuits, trusted-setup ceremony, and proof tooling.",
-  "license": "MIT",
+  "license": "UNLICENSED",
   "scripts": {
     "build": "zsh run.zsh"
   },

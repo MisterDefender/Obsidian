@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "Obsidian web frontend — Next.js + react-three-fiber.",
-  "license": "MIT",
+  "license": "UNLICENSED",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

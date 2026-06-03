@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "Obsidian — a zero-knowledge shielded vault. ZK privacy research, testnet only.",
-  "license": "MIT",
+  "license": "UNLICENSED",
   "workspaces": [
     "packages/contracts",
     "packages/circuits",

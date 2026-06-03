@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "Obsidian smart contracts (Solidity + Hardhat).",
-  "license": "MIT",
+  "license": "UNLICENSED",
   "scripts": {
     "compile": "hardhat compile",
     "test": "hardhat test",

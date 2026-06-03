@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "Obsidian client SDK — notes, Poseidon Merkle tree, proof generation, and pool sync.",
-  "license": "MIT",
+  "license": "UNLICENSED",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

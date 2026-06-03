@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "Obsidian relayer — gasless withdrawal service (Phase 2).",
-  "license": "MIT",
+  "license": "UNLICENSED",
   "type": "module",
   "main": "src/index.ts",
   "scripts": {
