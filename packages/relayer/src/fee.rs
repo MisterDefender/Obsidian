@@ -25,7 +25,6 @@ pub struct FeeQuote {
     /// Fee the client must bake into the proof, in 6-decimal USDC units.
     pub fee: U256,
     pub gas_price: u128,
-    pub gas_limit: u64,
     pub denomination: U256,
 }
 
@@ -65,7 +64,6 @@ pub async fn quote(ctx: &ChainContext, config: &Config) -> Result<FeeQuote, Stri
     Ok(FeeQuote {
         fee: U256::from(fee_units),
         gas_price,
-        gas_limit: WITHDRAW_GAS_LIMIT,
         denomination,
     })
 }

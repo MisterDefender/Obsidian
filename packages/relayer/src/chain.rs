@@ -2,10 +2,11 @@
 //! plus a lock that serializes transaction sends so concurrent requests can't
 //! collide on the wallet's nonce.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+use std::sync::Mutex as StdMutex;
 
 use alloy::network::EthereumWallet;
-use alloy::primitives::Address;
+use alloy::primitives::{Address, U256};
 use alloy::providers::{DynProvider, Provider, ProviderBuilder};
 use alloy::signers::local::PrivateKeySigner;
 use tokio::sync::Mutex;
@@ -19,9 +20,13 @@ pub struct ChainContext {
     /// "filler" stack behind one concrete type we can store in a struct.
     pub provider: DynProvider,
     pub vault_address: Address,
-    /// Held while submitting a transaction, so two requests can't grab the same
-    /// nonce at once. (Used in the relay step.)
+    /// Held (async) while submitting a transaction, so two requests can't grab the
+    /// same nonce at once.
     pub send_lock: Mutex<()>,
+    /// Nullifier hashes currently being submitted, to reject duplicate in-flight
+    /// requests. A std Mutex is fine: we only ever lock it briefly (never across an
+    /// `.await`).
+    pub pending: StdMutex<HashSet<U256>>,
 }
 
 /// Build a `ChainContext` for every chain in the config, and return the relayer's
@@ -66,6 +71,7 @@ pub async fn build_chains(
                 provider,
                 vault_address,
                 send_lock: Mutex::new(()),
+                pending: StdMutex::new(HashSet::new()),
             },
         );
     }
