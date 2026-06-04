@@ -14,12 +14,16 @@ mod state;
 use std::sync::Arc;
 
 use alloy::primitives::{Address, U256};
+use alloy::providers::Provider;
 use axum::{
-    extract::State,
+    extract::{DefaultBodyLimit, State},
+    http::{header, HeaderValue, Method},
     routing::{get, post},
     Json, Router,
 };
 use serde::{Deserialize, Serialize};
+use tower_http::cors::CorsLayer;
+use tower_http::trace::TraceLayer;
 use tracing_subscriber::EnvFilter;
 
 use crate::chain::{build_chains, ChainContext};
@@ -44,6 +48,9 @@ struct ChainInfo {
     /// The fee (6-decimal USDC units) a client should bake into its proof.
     fee: Option<String>,
     gas_price: Option<String>,
+    /// Relayer's native ETH balance (wei) on this chain, and whether it can pay gas.
+    relayer_balance: Option<String>,
+    funded: bool,
 }
 
 #[derive(Serialize)]
@@ -99,6 +106,9 @@ async fn info(State(state): State<SharedState>) -> Json<InfoResponse> {
     let mut chains = Vec::new();
 
     for ctx in state.chains.values() {
+        // Relayer's gas balance on this chain (so ops can see if it needs funding).
+        let balance = ctx.provider.get_balance(state.relayer_address).await.ok();
+
         // A fee quote reads gas price + denomination and computes the fee. If the
         // chain's RPC is unreachable we degrade to `None` instead of failing the
         // whole endpoint.
@@ -109,6 +119,8 @@ async fn info(State(state): State<SharedState>) -> Json<InfoResponse> {
                 denomination: Some(q.denomination.to_string()),
                 fee: Some(q.fee.to_string()),
                 gas_price: Some(q.gas_price.to_string()),
+                relayer_balance: balance.map(|b| b.to_string()),
+                funded: balance.map(|b| b > U256::ZERO).unwrap_or(false),
             },
             Err(err) => {
                 tracing::warn!(chain_id = ctx.chain_id, "fee quote failed: {err}");
@@ -118,6 +130,8 @@ async fn info(State(state): State<SharedState>) -> Json<InfoResponse> {
                     denomination: None,
                     fee: None,
                     gas_price: None,
+                    relayer_balance: balance.map(|b| b.to_string()),
+                    funded: balance.map(|b| b > U256::ZERO).unwrap_or(false),
                 }
             }
         };
@@ -170,6 +184,19 @@ async fn relay(
     }
     if provided_fee > quote.denomination {
         return Err(RelayError::BadRequest("fee exceeds denomination".to_string()));
+    }
+
+    // 3b. Underfunded guard: bail early if our wallet can't even cover the gas,
+    // rather than failing at send time with a cryptic node error.
+    let needed_gas =
+        U256::from(quote.gas_price).saturating_mul(U256::from(fee::WITHDRAW_GAS_LIMIT));
+    let balance = ctx
+        .provider
+        .get_balance(state.relayer_address)
+        .await
+        .map_err(|e| RelayError::Chain(e.to_string()))?;
+    if balance < needed_gas {
+        return Err(RelayError::Chain("relayer wallet is underfunded for gas".to_string()));
     }
 
     // 4. Root must be known, note must be unspent (cheap reads).
@@ -291,6 +318,19 @@ async fn main() {
         "relayer ready"
     );
 
+    // CORS: only the configured browser origins may call us. The frontend can't
+    // reach the relayer from the browser without this.
+    let origins: Vec<HeaderValue> = config
+        .allowed_origins
+        .iter()
+        .filter_map(|o| o.parse().ok())
+        .collect();
+    tracing::info!(origins = ?config.allowed_origins, "CORS allowed origins");
+    let cors = CorsLayer::new()
+        .allow_origin(origins)
+        .allow_methods([Method::GET, Method::POST])
+        .allow_headers([header::CONTENT_TYPE]);
+
     let state: SharedState = Arc::new(AppState {
         config,
         relayer_address,
@@ -301,7 +341,12 @@ async fn main() {
         .route("/health", get(health))
         .route("/info", get(info))
         .route("/relay", post(relay))
-        .with_state(state);
+        .with_state(state)
+        // Middleware (outermost first): log every request, cap the body size so a
+        // huge payload can't exhaust memory, and enforce CORS.
+        .layer(TraceLayer::new_for_http())
+        .layer(DefaultBodyLimit::max(32 * 1024)) // 32 KB — proofs are tiny
+        .layer(cors);
 
     let listener = tokio::net::TcpListener::bind(&bind)
         .await

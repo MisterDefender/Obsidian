@@ -32,6 +32,9 @@ pub struct Config {
     pub fee_margin_bps: u64, // basis points added on top, e.g. 2000 = +20%
     pub min_fee_usdc: u128,  // floor, in 6-decimal USDC units
 
+    /// Browser origins allowed to call us (CORS). Comma-separated in env.
+    pub allowed_origins: Vec<String>,
+
     pub chains: Vec<ChainConfig>,
 }
 
@@ -62,6 +65,13 @@ impl Config {
             .parse::<u128>()
             .map_err(|e| format!("MIN_FEE_USDC is not an integer: {e}"))?;
 
+        let allowed_origins = optional("ALLOWED_ORIGINS", "http://localhost:3000")
+            .split(',')
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(String::from)
+            .collect();
+
         // CHAINS is a comma-separated list of chain ids, e.g. "11155111,421614,84532".
         // For each id we then look up RPC_<id> and VAULT_<id>.
         let chains_raw = required("CHAINS")?;
@@ -89,6 +99,7 @@ impl Config {
             eth_price_usd,
             fee_margin_bps,
             min_fee_usdc,
+            allowed_origins,
             chains,
         })
     }

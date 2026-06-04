@@ -1,0 +1,5 @@
+# Keep the build context tiny — never ship build output or secrets.
+target/
+.env
+.env.*
+!.env.example
