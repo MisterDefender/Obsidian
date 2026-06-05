@@ -2,14 +2,22 @@
 
 import { useEffect, useState } from 'react';
 import { formatUnits, isAddress, getAddress, parseAbiItem, zeroAddress } from 'viem';
-import { useAccount, usePublicClient, useWriteContract } from 'wagmi';
+import { useAccount, useChainId, usePublicClient, useWriteContract } from 'wagmi';
 import { motion } from 'motion/react';
 import { loadSdk, ARTIFACTS } from '@/lib/sdk';
 import { vaultAbi } from '@/lib/abis';
 import { useNotesStore } from '@/lib/notesStore';
+import {
+    relayerConfigured,
+    relayerHealthy,
+    getRelayerInfo,
+    submitRelay,
+    type RelayerInfo,
+} from '@/lib/relayer';
 import type { ObsidianDeployment } from '@/lib/contracts';
 
 type Step = 'idle' | 'working' | 'done' | 'error';
+type RelayerState = 'probing' | 'online' | 'offline';
 
 const DEPOSIT_EVENT = parseAbiItem(
     'event Deposit(uint256 indexed commitment, uint32 leafIndex, uint256 timestamp)'
@@ -17,6 +25,7 @@ const DEPOSIT_EVENT = parseAbiItem(
 
 export function WithdrawPanel({ deployment }: { deployment: ObsidianDeployment }) {
     const { address } = useAccount();
+    const chainId = useChainId();
     const publicClient = usePublicClient();
     const { writeContractAsync } = useWriteContract();
 
@@ -28,6 +37,40 @@ export function WithdrawPanel({ deployment }: { deployment: ObsidianDeployment }
     const [step, setStep] = useState<Step>('idle');
     const [status, setStatus] = useState('');
     const [error, setError] = useState('');
+    const [paidFee, setPaidFee] = useState<bigint>(0n);
+
+    // relayer availability + chosen mode
+    const [relayerState, setRelayerState] = useState<RelayerState>(
+        relayerConfigured ? 'probing' : 'offline'
+    );
+    const [relayerInfo, setRelayerInfo] = useState<RelayerInfo | null>(null);
+    const [useRelayer, setUseRelayer] = useState(false);
+
+    // probe the relayer once on mount; degrade silently if it's down
+    useEffect(() => {
+        if (!relayerConfigured) return;
+        let cancelled = false;
+        (async () => {
+            const ok = await relayerHealthy();
+            if (cancelled) return;
+            if (!ok) {
+                setRelayerState('offline');
+                return;
+            }
+            try {
+                const info = await getRelayerInfo();
+                if (cancelled) return;
+                setRelayerInfo(info);
+                setRelayerState('online');
+                setUseRelayer(true); // prefer gasless when available
+            } catch {
+                if (!cancelled) setRelayerState('offline');
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, []);
 
     // a note picked from the note manager prefills the form
     useEffect(() => {
@@ -39,9 +82,17 @@ export function WithdrawPanel({ deployment }: { deployment: ObsidianDeployment }
         }
     }, [prefill, setPrefill]);
 
-    const denomLabel = `${formatUnits(deployment.denomination, 6)} USDC`;
+    const denom = deployment.denomination;
+    const denomLabel = `${formatUnits(denom, 6)} USDC`;
     const recipientValid = isAddress(recipient);
     const canSubmit = noteString.trim().length > 0 && recipientValid && step !== 'working';
+
+    // estimated relayer fee for the current chain (display only)
+    const estFee = (() => {
+        const ci = relayerInfo?.chains.find((c) => c.chain_id === chainId);
+        return ci?.fee ? BigInt(ci.fee) : null;
+    })();
+    const gasless = relayerState === 'online' && useRelayer;
 
     async function handleWithdraw() {
         if (!publicClient) return;
@@ -50,11 +101,9 @@ export function WithdrawPanel({ deployment }: { deployment: ObsidianDeployment }
         try {
             const sdk = await loadSdk();
 
-            // 1. parse the note + derive commitment / nullifier hash
             setStatus('Reading note…');
             const { note } = await sdk.parseNote(noteString.trim());
 
-            // 2. reject already-spent notes early
             const spent = await publicClient.readContract({
                 address: deployment.vault,
                 abi: vaultAbi,
@@ -63,7 +112,6 @@ export function WithdrawPanel({ deployment }: { deployment: ObsidianDeployment }
             });
             if (spent) throw new Error('This note has already been withdrawn.');
 
-            // 3. rebuild the tree from deposit events and locate our leaf
             setStatus('Scanning the pool…');
             const logs = await publicClient.getLogs({
                 address: deployment.vault,
@@ -84,46 +132,74 @@ export function WithdrawPanel({ deployment }: { deployment: ObsidianDeployment }
             if (index < 0) throw new Error('Note not found in this pool.');
             const merkleProof = tree.proof(index);
 
-            // 4. generate the zk proof (snarkjs, lazy-loaded)
+            // Decide relayer vs self. For the relayer we fetch a FRESH quote so the
+            // fee we bind into the proof matches what the relayer will require now.
+            let relayerAddr = zeroAddress as string;
+            let fee = 0n;
+            if (gasless) {
+                setStatus('Quoting relayer fee…');
+                const info = await getRelayerInfo();
+                const ci = info.chains.find((c) => c.chain_id === chainId);
+                if (!ci?.fee) throw new Error('Relayer is unavailable on this network.');
+                relayerAddr = getAddress(info.relayer);
+                fee = BigInt(ci.fee);
+            }
+
             setStatus('Generating zero-knowledge proof…');
             const { solidity } = await sdk.generateWithdrawProof(
                 {
                     note,
                     merkleProof,
                     recipient: getAddress(recipient),
-                    relayer: zeroAddress,
-                    fee: 0n,
+                    relayer: relayerAddr,
+                    fee,
                 },
                 ARTIFACTS
             );
 
-            const a = solidity.a.map(BigInt) as [bigint, bigint];
-            const b = solidity.b.map((row) => row.map(BigInt)) as [
-                [bigint, bigint],
-                [bigint, bigint],
-            ];
-            const c = solidity.c.map(BigInt) as [bigint, bigint];
+            if (gasless) {
+                // hand the proof to the relayer; it pays gas and submits
+                setStatus('Submitting via relayer…');
+                const { tx_hash } = await submitRelay({
+                    chainId,
+                    proof: { a: solidity.a, b: solidity.b, c: solidity.c },
+                    root: merkleProof.root.toString(),
+                    nullifierHash: note.nullifierHash.toString(),
+                    recipient: getAddress(recipient),
+                    fee: fee.toString(),
+                });
+                setStatus('Confirming…');
+                await publicClient.waitForTransactionReceipt({ hash: tx_hash as `0x${string}` });
+            } else {
+                // self-submit from the connected wallet
+                const a = solidity.a.map(BigInt) as [bigint, bigint];
+                const b = solidity.b.map((row) => row.map(BigInt)) as [
+                    [bigint, bigint],
+                    [bigint, bigint],
+                ];
+                const c = solidity.c.map(BigInt) as [bigint, bigint];
 
-            // 5. submit the withdrawal
-            setStatus('Submitting withdrawal…');
-            const hash = await writeContractAsync({
-                address: deployment.vault,
-                abi: vaultAbi,
-                functionName: 'withdraw',
-                args: [
-                    a,
-                    b,
-                    c,
-                    merkleProof.root,
-                    note.nullifierHash,
-                    getAddress(recipient),
-                    zeroAddress,
-                    0n,
-                ],
-            });
-            setStatus('Confirming…');
-            await publicClient.waitForTransactionReceipt({ hash });
+                setStatus('Submitting withdrawal…');
+                const hash = await writeContractAsync({
+                    address: deployment.vault,
+                    abi: vaultAbi,
+                    functionName: 'withdraw',
+                    args: [
+                        a,
+                        b,
+                        c,
+                        merkleProof.root,
+                        note.nullifierHash,
+                        getAddress(recipient),
+                        zeroAddress,
+                        0n,
+                    ],
+                });
+                setStatus('Confirming…');
+                await publicClient.waitForTransactionReceipt({ hash });
+            }
 
+            setPaidFee(fee);
             setStep('done');
         } catch (e) {
             setError(e instanceof Error ? e.message.split('\n')[0] : 'Withdrawal failed');
@@ -132,6 +208,7 @@ export function WithdrawPanel({ deployment }: { deployment: ObsidianDeployment }
     }
 
     if (step === 'done') {
+        const received = denom - paidFee;
         return (
             <div className="glass flex flex-col rounded-2xl p-6">
                 <h2 className="font-display text-xl font-semibold text-bone">Withdraw</h2>
@@ -148,16 +225,19 @@ export function WithdrawPanel({ deployment }: { deployment: ObsidianDeployment }
                     />
                     <p className="font-display text-lg font-semibold text-bone">Withdrawn privately</p>
                     <p className="mt-2 max-w-xs text-sm text-smoke">
-                        {denomLabel} sent to{' '}
+                        {`${formatUnits(received, 6)} USDC`} sent to{' '}
                         <span className="font-mono text-ember-glow">
                             {recipient.slice(0, 6)}…{recipient.slice(-4)}
                         </span>
-                        . No on-chain link ties it to the deposit.
+                        {paidFee > 0n
+                            ? ` — gaslessly, ${formatUnits(paidFee, 6)} USDC relayer fee.`
+                            : '. No on-chain link ties it to the deposit.'}
                     </p>
                     <button
                         onClick={() => {
                             setNoteString('');
                             setRecipient('');
+                            setPaidFee(0n);
                             setStep('idle');
                         }}
                         className="mt-6 rounded-xl border border-ash px-5 py-2.5 font-display text-sm font-medium text-bone hover:border-ember/50"
@@ -209,11 +289,41 @@ export function WithdrawPanel({ deployment }: { deployment: ObsidianDeployment }
                 )}
             </div>
 
-            <div className="mt-4 flex items-center gap-2 rounded-xl border border-ash/40 px-3 py-2.5 text-xs text-smoke/80">
-                <span className="inline-block h-1.5 w-1.5 rounded-full bg-smoke/50" />
-                Gasless relayer withdrawals arrive in a later phase. For now the connected wallet
-                submits the transaction.
-            </div>
+            {/* Relayer / gasless option, with graceful states */}
+            {relayerState === 'probing' && (
+                <div className="mt-4 flex items-center gap-2 rounded-xl border border-ash/40 px-3 py-2.5 text-xs text-smoke/80">
+                    <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-smoke/60" />
+                    Checking the relayer…
+                </div>
+            )}
+
+            {relayerState === 'online' && (
+                <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border border-ember/30 bg-ember/[0.03] px-3 py-3">
+                    <input
+                        type="checkbox"
+                        checked={useRelayer}
+                        onChange={(e) => setUseRelayer(e.target.checked)}
+                        className="mt-0.5 accent-ember"
+                    />
+                    <span className="text-xs leading-relaxed text-bone">
+                        <span className="font-semibold">Gasless withdrawal</span> — a relayer submits
+                        the transaction so the recipient needs no ETH.
+                        {estFee !== null && (
+                            <span className="mt-0.5 block text-smoke">
+                                Relayer fee ≈ {formatUnits(estFee, 6)} USDC · recipient gets{' '}
+                                {formatUnits(denom - estFee, 6)} USDC.
+                            </span>
+                        )}
+                    </span>
+                </label>
+            )}
+
+            {relayerState === 'offline' && relayerConfigured && (
+                <div className="mt-4 flex items-center gap-2 rounded-xl border border-ash/40 px-3 py-2.5 text-xs text-smoke/80">
+                    <span className="inline-block h-1.5 w-1.5 rounded-full bg-smoke/50" />
+                    Relayer offline — your connected wallet will submit the transaction.
+                </div>
+            )}
 
             {step === 'working' && (
                 <p className="mt-4 flex items-center gap-2 font-mono text-xs text-ember-glow">
@@ -230,7 +340,11 @@ export function WithdrawPanel({ deployment }: { deployment: ObsidianDeployment }
                 disabled={!canSubmit}
                 className="mt-6 rounded-xl bg-gradient-to-r from-ember to-ember-glow px-5 py-3 font-display text-sm font-semibold text-void shadow-[0_0_30px_-10px_var(--color-ember)] transition-transform enabled:hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-50"
             >
-                {step === 'working' ? 'Working…' : 'Generate proof & withdraw'}
+                {step === 'working'
+                    ? 'Working…'
+                    : gasless
+                      ? 'Generate proof & withdraw (gasless)'
+                      : 'Generate proof & withdraw'}
             </button>
         </div>
     );
