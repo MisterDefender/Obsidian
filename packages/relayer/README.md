@@ -33,33 +33,33 @@ cp .env.example .env     # fill in (local dev uses hardhat key #0)
 cargo run                # http://localhost:8080
 ```
 
-## Deploy to Fly.io
+## Deploy to Render (free, no credit card)
 
 The relayer is a long-running process, so it lives on its own host (not Vercel).
-[`Dockerfile`](./Dockerfile) + [`fly.toml`](./fly.toml) are ready to go.
+Render runs our [`Dockerfile`](./Dockerfile) unchanged and gives an HTTPS URL.
+A [`render.yaml`](../../render.yaml) Blueprint is included.
 
-```bash
-# one-time
-fly auth login
-fly launch --no-deploy            # pick a unique app name; keep the provided fly.toml
+**Dashboard flow (simplest):**
+1. [dashboard.render.com](https://dashboard.render.com) → **New → Web Service** → connect this GitHub repo.
+2. Set **Root Directory** = `packages/relayer`, **Runtime** = `Docker`, **Instance Type** = `Free`.
+3. Add environment variables (the secrets never leave the dashboard):
+   - `RELAYER_PRIVATE_KEY` = your funded relayer key
+   - `CHAINS` = `11155111,421614,84532`
+   - `RPC_<id>` / `VAULT_<id>` for each chain
+   - `ALLOWED_ORIGINS` = `https://obsidian-web-topaz.vercel.app,http://localhost:3000`
+   - (optional) `ETH_PRICE_USD`, `FEE_MARGIN_BPS`, `MIN_FEE_USDC`
+4. **Create Web Service.** Render builds the image and serves it at
+   `https://<name>.onrender.com`.
 
-# secrets (never commit these)
-fly secrets set \
-  RELAYER_PRIVATE_KEY=0x<your funded relayer key> \
-  CHAINS=11155111,421614,84532 \
-  RPC_11155111=https://eth-sepolia.g.alchemy.com/v2/<key> \
-  VAULT_11155111=0x<sepolia vault> \
-  RPC_421614=https://arb-sepolia.g.alchemy.com/v2/<key> \
-  VAULT_421614=0x<arb vault> \
-  RPC_84532=https://base-sepolia.g.alchemy.com/v2/<key> \
-  VAULT_84532=0x<base vault> \
-  ALLOWED_ORIGINS=https://obsidian-web-topaz.vercel.app,http://localhost:3000
-
-fly deploy
-```
+> Or use the included `render.yaml`: **New → Blueprint → connect repo**, then fill the
+> `sync: false` secrets when prompted.
 
 Then **fund the relayer address** (shown in `GET /info`) with a little testnet ETH on
 each chain so it can pay gas.
+
+> **Free-tier note:** the service sleeps after ~15 min idle and cold-starts (~30–60s)
+> on the next request. The frontend handles this — it probes the relayer and falls back
+> to a self-submitted withdrawal when it's asleep/offline.
 
 ## Wire it to the frontend (Vercel)
 

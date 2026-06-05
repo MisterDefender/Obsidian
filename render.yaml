@@ -1,0 +1,41 @@
+# Render Blueprint — deploys the Rust relayer as a free Docker web service.
+# Use it via the Render dashboard → New → Blueprint → connect this repo.
+# Secrets (sync: false) are filled in the dashboard and never committed.
+services:
+  - type: web
+    name: obsidian-relayer
+    runtime: docker
+    plan: free
+    region: oregon
+    rootDir: packages/relayer
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      # ── Secrets: set these in the Render dashboard ──────────────────────────
+      - key: RELAYER_PRIVATE_KEY
+        sync: false
+      - key: ALLOWED_ORIGINS # e.g. https://obsidian-web-topaz.vercel.app,http://localhost:3000
+        sync: false
+      - key: CHAINS # e.g. 11155111,421614,84532
+        sync: false
+      - key: RPC_11155111
+        sync: false
+      - key: VAULT_11155111
+        sync: false
+      - key: RPC_421614
+        sync: false
+      - key: VAULT_421614
+        sync: false
+      - key: RPC_84532
+        sync: false
+      - key: VAULT_84532
+        sync: false
+      # ── Non-secret fee knobs ────────────────────────────────────────────────
+      - key: ETH_PRICE_USD
+        value: "3000"
+      - key: FEE_MARGIN_BPS
+        value: "2000"
+      - key: MIN_FEE_USDC
+        value: "1000000"
