@@ -113,18 +113,49 @@ export function WithdrawPanel({ deployment }: { deployment: ObsidianDeployment }
             if (spent) throw new Error('This note has already been withdrawn.');
 
             setStatus('Scanning the pool…');
-            const logs = await publicClient.getLogs({
-                address: deployment.vault,
-                event: DEPOSIT_EVENT,
-                fromBlock: deployment.deploymentBlock,
-                toBlock: 'latest',
-            });
-            const leaves = logs
-                .map((l) => ({
-                    index: Number(l.args.leafIndex ?? 0),
-                    commitment: BigInt(l.args.commitment ?? 0n),
-                }))
-                .sort((a, b) => a.index - b.index);
+            const leaves: { index: number; commitment: bigint }[] = [];
+            const pushLogs = (logs: { args: { leafIndex?: number; commitment?: bigint } }[]) => {
+                for (const l of logs) {
+                    leaves.push({
+                        index: Number(l.args.leafIndex ?? 0),
+                        commitment: BigInt(l.args.commitment ?? 0n),
+                    });
+                }
+            };
+
+            try {
+                // Fast path: one request over the whole range (works on Alchemy/Infura).
+                pushLogs(
+                    await publicClient.getLogs({
+                        address: deployment.vault,
+                        event: DEPOSIT_EVENT,
+                        fromBlock: deployment.deploymentBlock,
+                        toBlock: 'latest',
+                    })
+                );
+            } catch {
+                // Fallback: chunked scan for range-limited RPCs.
+                try {
+                    const latestBlock = await publicClient.getBlockNumber();
+                    const CHUNK = 45000n;
+                    for (let from = deployment.deploymentBlock; from <= latestBlock; from += CHUNK) {
+                        const to = from + CHUNK - 1n > latestBlock ? latestBlock : from + CHUNK - 1n;
+                        pushLogs(
+                            await publicClient.getLogs({
+                                address: deployment.vault,
+                                event: DEPOSIT_EVENT,
+                                fromBlock: from,
+                                toBlock: to,
+                            })
+                        );
+                    }
+                } catch {
+                    throw new Error(
+                        'Could not read deposits from the RPC. Set NEXT_PUBLIC_SEPOLIA_RPC_URL to a reliable RPC (e.g. your Alchemy URL) and restart, then retry.'
+                    );
+                }
+            }
+            leaves.sort((a, b) => a.index - b.index);
 
             const tree = await sdk.createMerkleTree(deployment.levels);
             for (const leaf of leaves) tree.insert(leaf.commitment);
